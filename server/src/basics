@@ -1,0 +1,7 @@
+<!-- Controllers- functionalities of normal HTTP routes (here: only /health)
+Socket- real-time logic. One file per game, each exports a register function
+Middlewares- code that runs in between (error handler, 404 handler)
+Routes- define the HTTP APIs
+Utils- files used repeatedly (ApiError, ApiResponse, asyncHandler, getAllowedOrigins)
+Constants- game rules + namespace names in one place
+No DB folder yet- all game state lives in server memory (see docs/KNOWN-ISSUES.md) -->

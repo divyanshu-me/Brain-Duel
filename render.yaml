@@ -1,0 +1,16 @@
+# Render "Blueprint": New -> Blueprint -> pick this repo. Free web service for the backend.
+# The frontend goes on Vercel/Netlify (see README).
+services:
+  - type: web
+    name: brain-duel-server
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: CORS_ORIGIN
+        sync: false # you type this in the Render dashboard (your Vercel URL)
