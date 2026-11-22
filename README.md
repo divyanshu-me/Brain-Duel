@@ -1,152 +1,319 @@
 # Brain-Duel
 
-Real-time multiplayer games built with **React (Vite)**, **Socket.io**, **Node.js**, **Express** and **MongoDB (Mongoose)** for saved quizzes.
+**Brain-Duel** is a real-time multiplayer gaming application featuring online Tic-Tac-Toe and a room-based quiz game. It is built with React and Vite on the frontend, Node.js and Express on the backend, and Socket.IO for real-time communication. MongoDB stores quizzes so they remain available after a server restart.
 
-- **Tic-Tac-Toe**: online matchmaking, live board, live chat (it keeps working after the game ends), winner/draw detection, **Rematch** (both players agree, symbols swap), **Find New Opponent** without refreshing the page, opponent-left handling.
-- **Quiz Clash**: create a quiz (any number of questions, 4 options each, one or more correct), share the room ID, players join, a countdown runs each question, answers are checked on the server, live scores, a winner (or a tie) at the end, and the same room ID can be played again.
+## Games
 
-Notifications use **React-Toastify** (Quiz Clash) and **SweetAlert2** (Tic-Tac-Toe name prompt).
+### Tic-Tac-Toe
 
-> Accuracy notes for interviews: chat exists only in Tic-Tac-Toe. "Private rooms" in Quiz Clash means a room ID (room code), with no password or host controls, and the quiz creator is not automatically a player: the game starts when 2 players *join* the room. Tic-Tac-Toe move rules are not checked on the server (the clients decide the winner). **Quizzes are saved in MongoDB** (they survive a server restart and are deleted automatically after 90 days). The **live game state** (players, scores, timers) is kept in server memory, so a game in progress is lost if the server restarts. There is no login.
+Play against another person online through automatic matchmaking.
+
+- Real-time moves and board updates.
+- Automatic win and draw detection in the client.
+- In-game chat that remains available after a match ends.
+- Rematches that require both players to agree; player symbols are swapped for the next round.
+- Find a new opponent without refreshing the page.
+- Opponent-disconnection handling.
+
+### Quiz Clash
+
+Create a quiz and invite another player using a room ID.
+
+- Create quizzes with any number of questions, each with four options and one or more correct answers.
+- Join a quiz using its room ID.
+- Timed questions, server-side answer checking, and live score updates.
+- Automatic winner or tie result when the quiz ends.
+- Play the same saved quiz again using its room ID.
+- Duplicate room IDs are rejected.
+
+> **Room behaviour:** A Quiz Clash room is identified by a room ID; it is not password-protected and does not have host controls. Creating a quiz does not make the creator a player. The game starts when two players join the room.
+
+## Technology stack
+
+| Area | Technologies |
+|---|---|
+| Frontend | React, Vite |
+| Backend | Node.js, Express |
+| Real-time communication | Socket.IO |
+| Database | MongoDB, Mongoose |
+| Notifications | React-Toastify, SweetAlert2 |
+
+## How the application works
+
+The React client connects to the backend through Socket.IO. The server separates the two games into dedicated namespaces:
+
+- `/ttt` — Tic-Tac-Toe matchmaking, moves, chat, rematches, and opponent-left events.
+- `/quiz` — quiz creation, room joining, timed questions, answer submission, score updates, and results.
+
+MongoDB is used to persist created quizzes. Active game sessions—including connected players, scores, and timers—are maintained in server memory.
+
+### Data persistence and current implementation notes
+
+- **Quizzes:** Saved in MongoDB. They survive backend restarts and are automatically deleted after 90 days.
+- **Active games:** Stored in server memory. A backend restart ends active sessions and clears their live state.
+- **Accounts:** The application does not currently have user login or account management.
+- **Tic-Tac-Toe validation:** Move rules and winner detection are handled by the clients; the server does not independently validate moves.
+- **Quiz validation:** Submitted quiz answers are checked on the server.
+- **Chat:** Available in Tic-Tac-Toe only.
+
+These are implementation details of the current version, not claims about features that are planned or fully secured.
 
 ## Project structure
 
-```
+```text
 Brain-Duel-App/
-├── package.json          root scripts (setup, dev, start, build)
-├── render.yaml           free backend deploy on Render
+├── package.json                 # Root scripts for setup, development, start, and build
+├── render.yaml                  # Render deployment blueprint
 ├── docs/
-│   ├── CODE-MAP.md       Study Guide <-> files in this zip (old line numbers -> new)
-│   ├── CHANGELOG.md      what changed in version 2 and why
-│   └── KNOWN-ISSUES.md   issues fixed in v2 and the ones still open
-├── server/               Express + Socket.io  (ES modules, Chai-and-Code layout)
-│   ├── .env              PORT, CORS_ORIGIN, MONGODB_URI
+│   ├── CODE-MAP.md              # Guide to the project files
+│   ├── CHANGELOG.md             # Version 2 changes
+│   └── KNOWN-ISSUES.md          # Fixed and outstanding issues
+├── server/
+│   ├── .env                     # Local server environment variables (create this file)
 │   └── src/
-│       ├── index.js          loads env, creates http server, starts it
-│       ├── app.js            express app: cors, json, routes, error handlers
-│       ├── constants.js      namespaces + quiz rules (timers, points) + DB_NAME
-│       ├── db/index.js       connectDB (MongoDB connection)
-│       ├── models/quiz.model.js   Quiz schema (saved quizzes)
+│       ├── index.js             # Loads environment, creates HTTP server, starts server
+│       ├── app.js               # Express configuration, middleware, routes, error handlers
+│       ├── constants.js         # Namespaces, quiz rules, timers, points, database name
+│       ├── db/
+│       │   └── index.js         # MongoDB connection
+│       ├── models/
+│       │   └── quiz.model.js    # Mongoose schema for saved quizzes
 │       ├── socket/
-│       │   ├── index.js          creates Socket.io, plugs in both games
-│       │   ├── ticTacToe.socket.js   namespace /ttt  (was server.js)
-│       │   └── quiz.socket.js        namespace /quiz (was server2.js)
-│       ├── controllers/health.controller.js
-│       ├── routes/health.routes.js
-│       ├── middlewares/error.middleware.js
-│       └── utils/            ApiError, ApiResponse, asyncHandler, getAllowedOrigins
-└── client/               React + Vite
+│       │   ├── index.js         # Socket.IO setup and game registration
+│       │   ├── ticTacToe.socket.js
+│       │   └── quiz.socket.js
+│       ├── controllers/
+│       │   └── health.controller.js
+│       ├── routes/
+│       │   └── health.routes.js
+│       ├── middlewares/
+│       │   └── error.middleware.js
+│       └── utils/               # ApiError, ApiResponse, asyncHandler, origin helpers
+└── client/
     ├── index.html
     ├── vite.config.js
     └── src/
-        ├── main.jsx, App.jsx     game menu
-        ├── TicTacToe.jsx, Square/Square.jsx
+        ├── main.jsx
+        ├── App.jsx              # Main game menu
+        ├── TicTacToe.jsx
+        ├── Square/
+        │   └── Square.jsx
         ├── QuizClash.jsx
-        └── constants.js          SERVER_URL from VITE_SOCKET_URL
+        └── constants.js         # Backend URL from VITE_SOCKET_URL
 ```
 
-## MongoDB setup (needed once)
+## Getting started
 
-The server will not start without a MongoDB connection string, because quizzes are saved there. Pick **one** option.
+### Prerequisites
 
-**Option A: MongoDB Atlas (free, works locally and when deployed)**
-1. Create a free account at mongodb.com/atlas and create a free **M0** cluster.
-2. **Database Access**: add a database user (username + password). Avoid special characters in the password, or URL-encode them.
-3. **Network Access**: add your IP address. (For Render, add `0.0.0.0/0` because its IP changes.)
-4. **Connect, Drivers**: copy the connection string and replace `<username>` and `<password>`.
-5. Paste it in `server/.env` as `MONGODB_URI=...`
+- Node.js 18 or newer (Node.js 20 or 22 recommended).
+- npm.
+- A MongoDB connection string, either from MongoDB Atlas or a local MongoDB installation.
 
-**Option B: MongoDB installed on your computer**
-Set `MONGODB_URI=mongodb://127.0.0.1:27017` in `server/.env`.
+### 1. Configure MongoDB
 
-Do not put the database name in the string. It is set in `server/src/constants.js` (`DB_NAME = "brain-duel"`). You do not create any collection by hand, the first saved quiz creates it.
+The backend requires MongoDB because quizzes are persisted in the database. Choose one of the following options.
 
-## Run it locally
+#### Option A: MongoDB Atlas
 
-You need **Node.js 18 or newer** (20 or 22 recommended) and a MongoDB connection string (see above).
+1. Create a MongoDB Atlas account and provision a free M0 cluster.
+2. In **Database Access**, create a database user and password.
+3. In **Network Access**, allow your development IP address. For a Render deployment, configure network access to allow the Render-hosted backend to connect; the original deployment setup uses `0.0.0.0/0` because Render instances may not have a fixed outbound IP. Consider the security implications of broad network access.
+4. In **Connect → Drivers**, copy the connection string and replace the username and password placeholders.
+5. Add the connection string to `server/.env` as `MONGODB_URI`.
+
+#### Option B: Local MongoDB
+
+Set the following value in `server/.env`:
+
+```env
+MONGODB_URI=mongodb://127.0.0.1:27017
+```
+
+The database name is configured in `server/src/constants.js` as `brain-duel`. You do not need to create a collection manually; it is created when the application first saves a quiz.
+
+### 2. Configure environment variables
+
+Create the required environment files. Do not commit real credentials or secret values to GitHub.
+
+**`server/.env`**
+
+```env
+PORT=5000
+CORS_ORIGIN=http://localhost:5173
+MONGODB_URI=your_mongodb_connection_string
+```
+
+**`client/.env`**
+
+```env
+VITE_SOCKET_URL=http://localhost:5000
+```
+
+| File | Variable | Purpose | Default / example |
+|---|---|---|---|
+| `server/.env` | `PORT` | Backend port | `5000` |
+| `server/.env` | `CORS_ORIGIN` | Comma-separated allowed frontend origins | `http://localhost:5173` |
+| `server/.env` | `MONGODB_URI` | MongoDB connection string | Required |
+| `client/.env` | `VITE_SOCKET_URL` | Backend URL used by the browser | `http://localhost:5000` |
+
+Vite embeds `VITE_*` variables at build time. Rebuild and redeploy the frontend after changing `VITE_SOCKET_URL`.
+
+### 3. Install dependencies
+
+From the project root, run:
 
 ```bash
-# 1. from the Brain-Duel-App folder, install everything (root + server + client)
 npm run setup
+```
 
-# 2. start backend (port 5000) and frontend (port 5173) together
+This root script installs the project dependencies for the root, server, and client.
+
+### 4. Start the application
+
+From the project root, run:
+
+```bash
 npm run dev
 ```
 
-Open **http://localhost:5173** in **two browser windows** (or one normal and one incognito window) to play against yourself.
+This starts the backend and frontend together. By default:
 
-Prefer two terminals?
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:5000`
+
+To start the two parts separately, use two terminals.
+
+**Terminal 1 — backend**
 
 ```bash
-cd server && npm install && npm run dev      # terminal 1  -> http://localhost:5000
-cd client && npm install && npm run dev      # terminal 2  -> http://localhost:5173
+cd server
+npm install
+npm run dev
 ```
 
-Check the backend: open http://localhost:5000/api/v1/health (you should see a JSON response).
+**Terminal 2 — frontend**
 
-### How to test each game
+```bash
+cd client
+npm install
+npm run dev
+```
 
-**Tic-Tac-Toe**
-1. Window 1: click **Play Tic Tac Toe**, then **Play Online**, enter a name. It shows "Waiting for opponent".
-2. Window 2: do the same. Both windows get paired. The second player is Circle and moves first.
-3. Play a game and finish it. The chat still works after the result.
-4. Click **Rematch** in one window: it shows "Waiting for opponent..." while the other window shows "... wants a rematch!" and **Accept Rematch**. After accepting, the board is cleared, the symbols are swapped (the player who was Cross now plays Circle and moves first) and the chat is kept.
-5. Click **Find New Opponent** in one window to leave without refreshing. The other player keeps the result, sees "Your opponent has left the game." and can also click Find New Opponent.
+To verify that the backend is responding, visit `http://localhost:5000/api/v1/health`. It should return a JSON response.
 
-**Quiz Clash**
-1. Window 1: click **Play QuizClash**, then **Create Quiz**. Enter a quiz name and a room ID, type a question and its 4 options, tick the correct box(es), click **Add Question**. Add 2 or 3 questions, then click **Create Quiz**.
-2. Window 1 and Window 2: click **Play QuizClash**, then **Play Quiz**. Enter different names, the same room ID, and click **Join**.
-3. The game starts automatically when 2 players have joined. Answer, watch the scores, the reveal and the final winner (or tie).
-   Note: the window that created the quiz is **not** a player. To play with 2 windows, both must click **Play Quiz** and join the room.
-4. Click **Play Again** and join the same room ID again to play the quiz once more.
-5. **Saved quizzes check:** create a quiz, stop the server (Ctrl+C), start it again (`npm run dev`), and join the same room ID. The quiz is still found because it is stored in MongoDB. (In version 2 you would get "Quiz not found".)
-6. Try creating a second quiz with the same room ID. You get "Room ID already exists".
+## Testing the games locally
 
-### Play from your phone on the same Wi-Fi
-1. Find your computer's local IP (for example `192.168.1.8`).
-2. `client/.env`: `VITE_SOCKET_URL=http://192.168.1.8:5000`
-3. `server/.env`: `CORS_ORIGIN=http://localhost:5173,http://192.168.1.8:5173`
-4. Run `npm run host --prefix client` and `npm run dev --prefix server`, open `http://192.168.1.8:5173` on the phone.
+Use two browser windows (or a normal window and an incognito window) to simulate two players.
 
-## Environment variables
+### Test Tic-Tac-Toe
 
-| File | Variable | Meaning | Default |
-|------|----------|---------|---------|
-| `server/.env` | `PORT` | backend port | `5000` |
-| `server/.env` | `CORS_ORIGIN` | allowed frontend URL(s), comma separated | `http://localhost:5173` |
-| `server/.env` | `MONGODB_URI` | MongoDB connection string (Atlas or local), **required** | none |
-| `client/.env` | `VITE_SOCKET_URL` | backend URL the browser connects to | `http://localhost:5000` |
+1. In the first window, select **Play Tic Tac Toe → Play Online** and enter a player name. The game waits for an opponent.
+2. Repeat in the second window with a different name. The players should be matched.
+3. Play until the game ends. Confirm that the chat remains available after the result.
+4. Select **Rematch** in one window. Accept the rematch in the other window. The board resets, symbols are swapped, and the chat is retained.
+5. Select **Find New Opponent** to leave the current match without refreshing the page. The other player is notified that their opponent has left.
 
-Vite reads `VITE_*` variables at **build time**, so rebuild/redeploy the client after changing it.
+### Test Quiz Clash
 
-## Deploy for free
+1. In the first window, select **Play QuizClash → Create Quiz**. Enter a quiz name and room ID, add questions with four options each, mark the correct option(s), and create the quiz.
+2. In both windows, select **Play QuizClash → Play Quiz**. Enter different player names and the same room ID, then join.
+3. The game starts when both players have joined. Answer the timed questions and check the score updates and final result.
+4. Select **Play Again** and join the same room ID again to replay the quiz.
+5. To verify persistence, stop and restart the backend, then join the same room ID again. The quiz should still be available because it is saved in MongoDB.
+6. Try creating another quiz with the same room ID. The application should reject the duplicate room ID.
 
-**1. Push to GitHub** (the `.gitignore` files keep `node_modules` and `.env` out).
+**Important:** The person who creates a quiz is not automatically one of its players. Two players must join the room for the game to start.
 
-**2. Backend on Render (free web service)**
-- Render dashboard, New, Blueprint, choose your repo (it reads `render.yaml`).
-  Or New, Web Service manually with: Root Directory `server`, Build `npm install`, Start `npm start`.
-- Add the environment variable `MONGODB_URI` = your Atlas connection string (Atlas Network Access must allow `0.0.0.0/0` for Render).
-- Add the environment variable `CORS_ORIGIN` = your frontend URL (you get it in step 3, then come back and set it).
-- Copy the backend URL, for example `https://brain-duel-server.onrender.com`.
-- Free instances sleep after inactivity, so the first request can take around a minute. Free tier limits change, so check Render's current pricing page.
+## Testing from a phone on the same Wi-Fi network
 
-**3. Frontend on Vercel (or Netlify)**
-- New Project, import the repo, set **Root Directory** to `client`, framework Vite.
-- Environment variable `VITE_SOCKET_URL` = the Render URL from step 2.
-- Deploy, then put the Vercel URL into Render's `CORS_ORIGIN` and redeploy the backend.
+To open the application on a phone connected to the same local network:
 
-**4. Test** with two devices using the Vercel URL.
+1. Find your computer's local network IP address (for example, `192.168.1.8`).
+2. Set the backend URL in `client/.env`:
 
-## Socket events (cheat sheet)
+   ```env
+   VITE_SOCKET_URL=http://192.168.1.8:5000
+   ```
 
-Namespace `/ttt`
-- client sends: `request_to_play {playerName}`, `playerMoveFromClient {state:{id,sign}}`, `send_message {message}`
-- server sends: `OpponentFound {opponentName, playingAs}`, `OpponentNotFound`, `playerMoveFromServer`, `receive_message {sender, message}`, `opponentLeftMatch`
+3. Add both the local frontend origin and the phone-accessible frontend origin to `server/.env`:
 
-Namespace `/quiz`
-- client sends: `createQuiz {roomId, quizName, questions}`, `joinRoom (room, name)`, `submitAnswer (room, index)`, `leaveRoom (room, name)`
-- server sends: `quizCreated`, `quizCreationError`, `quizNotFound`, `message`, `newQuestion`, `scoresUpdate`, `reveal`, `gameOver`
+   ```env
+   CORS_ORIGIN=http://localhost:5173,http://192.168.1.8:5173
+   ```
 
-## Known limitations
-See `docs/KNOWN-ISSUES.md` for what was fixed in version 2 and what is still open on purpose (the Study Guide treats them as practice, and interviewers ask about them).
+4. Start the backend and the Vite host process:
+
+   ```bash
+   npm run dev --prefix server
+   npm run host --prefix client
+   ```
+
+5. Open `http://192.168.1.8:5173` on the phone. Replace the example IP with your computer's actual local IP address.
+
+## Deployment
+
+The repository includes a `render.yaml` deployment blueprint for the backend. The frontend can be deployed on Vercel or Netlify.
+
+### 1. Push the project to GitHub
+
+Push the project to your GitHub repository. Check that `.env` files, database credentials, and `node_modules` are excluded by `.gitignore` before pushing.
+
+### 2. Deploy the backend on Render
+
+You can use the Blueprint flow if Render detects the repository's `render.yaml`, or create a Web Service manually with:
+
+| Setting | Value |
+|---|---|
+| Root directory | `server` |
+| Build command | `npm install` |
+| Start command | `npm start` |
+
+Add these environment variables in Render:
+
+- `MONGODB_URI` — your MongoDB Atlas connection string.
+- `CORS_ORIGIN` — your deployed frontend URL. You can set this after deploying the frontend, then redeploy the backend.
+
+Copy the deployed backend URL (for example, `https://your-service.onrender.com`). Free-tier services may spin down after inactivity, so the first request can take longer. Check Render's current plan details for the latest limits.
+
+### 3. Deploy the frontend on Vercel or Netlify
+
+1. Import the same GitHub repository.
+2. Set the project root directory to `client` and use the Vite framework preset.
+3. Add the environment variable `VITE_SOCKET_URL` with the deployed Render backend URL.
+4. Deploy the frontend.
+5. Add the deployed frontend URL to the backend's `CORS_ORIGIN` value in Render and redeploy the backend.
+
+### 4. Verify the deployment
+
+Open the deployed frontend on two devices or browser sessions and test both games. Confirm that the frontend is connecting to the deployed backend and that quiz creation and retrieval work with MongoDB.
+
+## Socket.IO event reference
+
+The application uses separate namespaces for each game.
+
+### `/ttt` — Tic-Tac-Toe
+
+| Direction | Events |
+|---|---|
+| Client → server | `request_to_play { playerName }`, `playerMoveFromClient { state: { id, sign } }`, `send_message { message }` |
+| Server → client | `OpponentFound { opponentName, playingAs }`, `OpponentNotFound`, `playerMoveFromServer`, `receive_message { sender, message }`, `opponentLeftMatch` |
+
+### `/quiz` — Quiz Clash
+
+| Direction | Events |
+|---|---|
+| Client → server | `createQuiz { roomId, quizName, questions }`, `joinRoom (room, name)`, `submitAnswer (room, index)`, `leaveRoom (room, name)` |
+| Server → client | `quizCreated`, `quizCreationError`, `quizNotFound`, `message`, `newQuestion`, `scoresUpdate`, `reveal`, `gameOver` |
+
+## Known issues and further details
+
+For more information about the implementation and outstanding issues, see:
+
+- [`docs/CODE-MAP.md`](docs/CODE-MAP.md) — codebase navigation guide.
+- [`docs/CHANGELOG.md`](docs/CHANGELOG.md) — version 2 changes.
+- [`docs/KNOWN-ISSUES.md`](docs/KNOWN-ISSUES.md) — issues fixed and known limitations.
+
+## License
+
+No license information is specified in this repository. Add a `LICENSE` file before presenting the project as open source for reuse.
