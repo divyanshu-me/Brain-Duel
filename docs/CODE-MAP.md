@@ -19,6 +19,7 @@ Use this file next to the Study Guide. It tells you where every part of the guid
 - `client/index.html`, `client/package.json`, `client/public/favicon.svg`
 - `.gitignore` (root, server, client), `server/.env`, `server/.env.example`, `client/.env.example`
 - `server/src/index.js`, `app.js`, `constants.js` (new entry and app files)
+- **Version 3 (MongoDB):** `server/src/db/index.js`, `server/src/models/quiz.model.js`, `MONGODB_URI` in `server/.env`, `.env.example` and `render.yaml`
 - Health route (`/` and `/api/v1/health`), error and 404 middleware
 - Root `package.json` (`npm run setup`, `npm run dev`), `render.yaml`, `.prettierrc`, `README.md`, `docs/`
 
@@ -50,8 +51,9 @@ One Socket.io server, two namespaces: `/ttt` and `/quiz`. A namespace is a separ
 - new: `wireRematch` **21**
 
 `quiz.socket.js`
-- `discardRoom` **35** (new), `startGame` **44**, `askQuestion` **51**, 30 s timer **73**, `revealAndNext` **76**, `revealIfEveryoneAnswered` **109** (new), `endGame` **117**, `validateQuiz` **139** (new)
-- `createQuiz` **174**, `creator` **204**, `joinRoom` **210**, `submitAnswer` **268**, `scoresUpdate` **287**, `leaveRoom` **294**, `disconnect` **310**
+- (line numbers below are for version 3, after the MongoDB change)
+- `discardRoom` **37** (new), `startGame` **46**, `askQuestion` **53**, 30 s timer **75**, `revealAndNext` **78**, `revealIfEveryoneAnswered` **111** (new), `endGame` **119**, `validateQuiz` **141** (new)
+- `createQuiz` **176** (now `async`, saves with `Quiz.create`), `creator` **198**, `joinRoom` **213** (now `async`, loads with `Quiz.findOne`), `submitAnswer` **285**, `scoresUpdate` **~304**, `leaveRoom` **311**, `disconnect` **327**
 
 Issues still open are tagged in the server code with `KNOWN ISSUE #n`.
 
@@ -66,13 +68,18 @@ Issues still open are tagged in the server code with `KNOWN ISSUE #n`.
 | `controllers/`, `routes/`, `middlewares/` | Same folders. Only the health endpoint uses them. The real-time logic is in `socket/`. |
 | `src/basics` notes file | `server/src/basics` |
 | `.prettierrc`, `.prettierignore`, `.gitignore`, `.env` | Same settings and files |
-| MongoDB, JWT, multer, Cloudinary | Not present. Brain-Duel has no database or login. |
+| MongoDB (mongoose) | **Version 3:** `db/index.js` (`connectDB`, then `listen`), `models/quiz.model.js` (`export const Quiz = mongoose.model(...)`), `DB_NAME` in `constants.js`. Only quizzes are saved. |
+| JWT, multer, Cloudinary | Not present. Brain-Duel has no login or file upload. |
 
-### Natural next step using what you already know from Chai
-Store quizzes in MongoDB: add `db/index.js` (copy from Backend-chai), `models/quiz.model.js`, and a `routes/quiz.routes.js` with `POST /api/v1/quizzes`. Then `joinRoom` loads the quiz from MongoDB instead of the `createdQuizzes` object. Add `verifyJWT` later to make quizzes belong to users. This fixes the "state is lost on restart" limitation.
+### Done in version 3: quizzes in MongoDB
+`createQuiz` saves with `Quiz.create` (the unique index on `roomId` rejects duplicates) and `joinRoom` loads with `Quiz.findOne` when there is no live room. The live game state stays in memory. No REST route was needed because the socket events already carry the data.
+
+### Natural next step
+Add login (`verifyJWT`, a `User` model) and store the creator's user id in `Quiz.creator`, so quizzes belong to users and only the owner can edit or delete them.
 
 ## 6. What was and was not verified
 
 - Server logic: every file passes a syntax check, and the real handler code was run against a simulated Socket.io layer with mocked timers (pairing, moves, chat, rematch, cleanup, quiz validation, the reveal-gap race, ties, replaying a room, leave and disconnect).
 - Client in a real browser: the actual React components and the actual server game code were run together in Chromium with a simulated network, driving two players through full Tic-Tac-Toe games (win, diagonal highlight, chat after the match, rematch, find new opponent, leaving) and full Quiz Clash games (create, wrong room, join, play, winner, tie, play again). No console errors or warnings.
-- Not done: a real `npm install`, real Socket.io over the network, and the real Vite dev server. There was no network access when this was built. Run `npm run setup` and `npm run dev`, then follow the "How to test each game" steps in the README.
+- Version 3 (MongoDB): every changed file passes a syntax check, and the real `quiz.socket.js` code was run against a simulated Socket.io layer and an in-memory **fake** of mongoose (create, duplicate and simultaneous create, validation before the DB, DB errors on create and join, unknown room, two players joining at the same moment, a player leaving while the DB loads, a "restart" with empty memory, and a full answer and reveal).
+- Not done: a real `npm install`, real MongoDB / Atlas, real Socket.io over the network, and the real Vite dev server. There was no network access when this was built. Run `npm run setup` and `npm run dev`, then follow the "How to test each game" steps in the README (steps 5 and 6 test MongoDB).

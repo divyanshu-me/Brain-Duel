@@ -1,13 +1,13 @@
 # Brain-Duel
 
-Real-time multiplayer games built with **React (Vite)**, **Socket.io**, **Node.js** and **Express**.
+Real-time multiplayer games built with **React (Vite)**, **Socket.io**, **Node.js**, **Express** and **MongoDB (Mongoose)** for saved quizzes.
 
 - **Tic-Tac-Toe**: online matchmaking, live board, live chat (it keeps working after the game ends), winner/draw detection, **Rematch** (both players agree, symbols swap), **Find New Opponent** without refreshing the page, opponent-left handling.
 - **Quiz Clash**: create a quiz (any number of questions, 4 options each, one or more correct), share the room ID, players join, a countdown runs each question, answers are checked on the server, live scores, a winner (or a tie) at the end, and the same room ID can be played again.
 
 Notifications use **React-Toastify** (Quiz Clash) and **SweetAlert2** (Tic-Tac-Toe name prompt).
 
-> Accuracy notes for interviews: chat exists only in Tic-Tac-Toe. "Private rooms" in Quiz Clash means a room ID (room code), with no password or host controls, and the quiz creator is not automatically a player: the game starts when 2 players *join* the room. Tic-Tac-Toe move rules are not checked on the server (the clients decide the winner). All game state is in server memory.
+> Accuracy notes for interviews: chat exists only in Tic-Tac-Toe. "Private rooms" in Quiz Clash means a room ID (room code), with no password or host controls, and the quiz creator is not automatically a player: the game starts when 2 players *join* the room. Tic-Tac-Toe move rules are not checked on the server (the clients decide the winner). **Quizzes are saved in MongoDB** (they survive a server restart and are deleted automatically after 90 days). The **live game state** (players, scores, timers) is kept in server memory, so a game in progress is lost if the server restarts. There is no login.
 
 ## Project structure
 
@@ -20,11 +20,13 @@ Brain-Duel-App/
 │   ├── CHANGELOG.md      what changed in version 2 and why
 │   └── KNOWN-ISSUES.md   issues fixed in v2 and the ones still open
 ├── server/               Express + Socket.io  (ES modules, Chai-and-Code layout)
-│   ├── .env              PORT, CORS_ORIGIN
+│   ├── .env              PORT, CORS_ORIGIN, MONGODB_URI
 │   └── src/
 │       ├── index.js          loads env, creates http server, starts it
 │       ├── app.js            express app: cors, json, routes, error handlers
-│       ├── constants.js      namespaces + quiz rules (timers, points)
+│       ├── constants.js      namespaces + quiz rules (timers, points) + DB_NAME
+│       ├── db/index.js       connectDB (MongoDB connection)
+│       ├── models/quiz.model.js   Quiz schema (saved quizzes)
 │       ├── socket/
 │       │   ├── index.js          creates Socket.io, plugs in both games
 │       │   ├── ticTacToe.socket.js   namespace /ttt  (was server.js)
@@ -43,9 +45,25 @@ Brain-Duel-App/
         └── constants.js          SERVER_URL from VITE_SOCKET_URL
 ```
 
+## MongoDB setup (needed once)
+
+The server will not start without a MongoDB connection string, because quizzes are saved there. Pick **one** option.
+
+**Option A: MongoDB Atlas (free, works locally and when deployed)**
+1. Create a free account at mongodb.com/atlas and create a free **M0** cluster.
+2. **Database Access**: add a database user (username + password). Avoid special characters in the password, or URL-encode them.
+3. **Network Access**: add your IP address. (For Render, add `0.0.0.0/0` because its IP changes.)
+4. **Connect, Drivers**: copy the connection string and replace `<username>` and `<password>`.
+5. Paste it in `server/.env` as `MONGODB_URI=...`
+
+**Option B: MongoDB installed on your computer**
+Set `MONGODB_URI=mongodb://127.0.0.1:27017` in `server/.env`.
+
+Do not put the database name in the string. It is set in `server/src/constants.js` (`DB_NAME = "brain-duel"`). You do not create any collection by hand, the first saved quiz creates it.
+
 ## Run it locally
 
-You need **Node.js 18 or newer** (20 or 22 recommended).
+You need **Node.js 18 or newer** (20 or 22 recommended) and a MongoDB connection string (see above).
 
 ```bash
 # 1. from the Brain-Duel-App folder, install everything (root + server + client)
@@ -81,6 +99,8 @@ Check the backend: open http://localhost:5000/api/v1/health (you should see a JS
 3. The game starts automatically when 2 players have joined. Answer, watch the scores, the reveal and the final winner (or tie).
    Note: the window that created the quiz is **not** a player. To play with 2 windows, both must click **Play Quiz** and join the room.
 4. Click **Play Again** and join the same room ID again to play the quiz once more.
+5. **Saved quizzes check:** create a quiz, stop the server (Ctrl+C), start it again (`npm run dev`), and join the same room ID. The quiz is still found because it is stored in MongoDB. (In version 2 you would get "Quiz not found".)
+6. Try creating a second quiz with the same room ID. You get "Room ID already exists".
 
 ### Play from your phone on the same Wi-Fi
 1. Find your computer's local IP (for example `192.168.1.8`).
@@ -94,6 +114,7 @@ Check the backend: open http://localhost:5000/api/v1/health (you should see a JS
 |------|----------|---------|---------|
 | `server/.env` | `PORT` | backend port | `5000` |
 | `server/.env` | `CORS_ORIGIN` | allowed frontend URL(s), comma separated | `http://localhost:5173` |
+| `server/.env` | `MONGODB_URI` | MongoDB connection string (Atlas or local), **required** | none |
 | `client/.env` | `VITE_SOCKET_URL` | backend URL the browser connects to | `http://localhost:5000` |
 
 Vite reads `VITE_*` variables at **build time**, so rebuild/redeploy the client after changing it.
@@ -105,6 +126,7 @@ Vite reads `VITE_*` variables at **build time**, so rebuild/redeploy the client 
 **2. Backend on Render (free web service)**
 - Render dashboard, New, Blueprint, choose your repo (it reads `render.yaml`).
   Or New, Web Service manually with: Root Directory `server`, Build `npm install`, Start `npm start`.
+- Add the environment variable `MONGODB_URI` = your Atlas connection string (Atlas Network Access must allow `0.0.0.0/0` for Render).
 - Add the environment variable `CORS_ORIGIN` = your frontend URL (you get it in step 3, then come back and set it).
 - Copy the backend URL, for example `https://brain-duel-server.onrender.com`.
 - Free instances sleep after inactivity, so the first request can take around a minute. Free tier limits change, so check Render's current pricing page.

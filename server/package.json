@@ -1,12 +1,13 @@
 {
   "name": "brain-duel-server",
   "version": "1.0.0",
-  "description": "Brain-Duel backend: Express + Socket.io (Tic-Tac-Toe and Quiz Clash)",
+  "description": "Brain-Duel backend: Express + Socket.io + MongoDB (Tic-Tac-Toe and Quiz Clash)",
   "keywords": [
     "javascript",
     "backend",
     "socket.io",
-    "express"
+    "express",
+    "mongodb"
   ],
   "license": "ISC",
   "author": "Divyanshu",
@@ -23,6 +24,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
+    "mongoose": "^8.9.0",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {

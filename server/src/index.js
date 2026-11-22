@@ -4,6 +4,7 @@ import "dotenv/config";
 import http from "node:http";
 import { app } from "./app.js";
 import { initSocket } from "./socket/index.js";
+import { connectDB } from "./db/index.js";
 
 const PORT = process.env.PORT || 5000;
 
@@ -20,6 +21,14 @@ httpServer.on("error", (err) => {
   process.exit(1);
 });
 
-httpServer.listen(PORT, () => {
-  console.log(`⚙️ Server is running at port : ${PORT}`);
-});
+// Connect to MongoDB first, then start listening (same order as Backend-chai)
+connectDB()
+  .then(() => {
+    httpServer.listen(PORT, () => {
+      console.log(`⚙️ Server is running at port : ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.log("MongoDB connection failed !!! ", err.message);
+    process.exit(1);
+  });

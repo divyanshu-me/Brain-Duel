@@ -2,6 +2,8 @@
 // This is your original server2.js. The game flow and event names are the same.
 // Fixed on top of it: the reveal-gap race, ties, join-before-check, server-side
 // validation, replaying a finished room, and rooms stalling when a player leaves.
+// Version 3: quizzes are saved in MongoDB (models/quiz.model.js) so they survive a restart.
+// Only the LIVE game state (players, scores, timers, status) is still kept in memory.
 //
 // Events the CLIENT sends : createQuiz, joinRoom, submitAnswer, leaveRoom
 // Events the SERVER sends : quizCreated, quizCreationError, quizNotFound, message,
@@ -20,9 +22,9 @@ import {
   QUIZ_REVEAL_DELAY_MS,
   QUIZ_ROOM_CLEANUP_MS,
 } from "../constants.js";
+import { Quiz } from "../models/quiz.model.js";
 
-// Data stores (in memory, lost on every restart)
-const createdQuizzes = {}; // roomId -> { quizName, questions, creator, createdAt }
+// Saved quizzes live in MongoDB. This object holds only the LIVE games (lost on restart, which is fine).
 const activeRooms = {}; // roomId -> { players, currentQuestionIndex, questions, status, timer, nextTimer }
 // room status: "waiting" -> "playing" -> "revealing" -> "playing" ... -> "finished"
 
@@ -171,7 +173,7 @@ const registerQuiz = (io) => {
   io.on("connection", (socket) => {
     console.log("user connected", socket.id);
 
-    socket.on("createQuiz", (quizData) => {
+    socket.on("createQuiz", async (quizData) => {
       const roomId = asText(quizData?.roomId);
       const quizName = asText(quizData?.quizName);
       const rawQuestions = quizData?.questions;
@@ -192,22 +194,23 @@ const registerQuiz = (io) => {
         return;
       }
 
-      if (createdQuizzes[roomId]) {
-        socket.emit("quizCreationError", "Room ID already exists");
+      try {
+        // KNOWN ISSUE #10: `creator` is stored but never used (no host / start button).
+        await Quiz.create({ roomId, quizName, questions: sanitized, creator: socket.id });
+      } catch (err) {
+        if (err.code === 11000) {
+          // the unique index on roomId rejected it (this also covers two people saving at once)
+          socket.emit("quizCreationError", "Room ID already exists");
+        } else {
+          console.log("createQuiz failed:", err.message);
+          socket.emit("quizCreationError", "Could not save the quiz. Please try again.");
+        }
         return;
       }
-
-      // KNOWN ISSUE #10: `creator` is stored but never used (no host / start button).
-      createdQuizzes[roomId] = {
-        quizName,
-        questions: sanitized,
-        creator: socket.id,
-        createdAt: new Date().toISOString(),
-      };
       socket.emit("quizCreated", { roomId, quizName });
     });
 
-    socket.on("joinRoom", (room, name) => {
+    socket.on("joinRoom", async (room, name) => {
       room = asText(room);
       name = asText(name).slice(0, MAX_NAME_LENGTH) || "Anonymous";
       if (!room) return;
@@ -216,20 +219,34 @@ const registerQuiz = (io) => {
       if (activeRooms[room]?.status === "finished") discardRoom(room);
 
       if (!activeRooms[room]) {
-        const quiz = createdQuizzes[room];
+        // No live game yet, so load the saved quiz from MongoDB.
+        // `room` is already a trimmed string (asText), so it cannot be used for query injection.
+        let quiz;
+        try {
+          quiz = await Quiz.findOne({ roomId: room }).lean();
+        } catch (err) {
+          console.log("joinRoom failed:", err.message);
+          socket.emit("message", "Could not load the quiz. Please try again.");
+          return;
+        }
         if (!quiz) {
           socket.emit("quizNotFound"); // the socket has NOT joined anything yet
           return;
         }
 
-        activeRooms[room] = {
-          players: [],
-          currentQuestionIndex: 0,
-          questions: quiz.questions,
-          status: "waiting",
-          timer: null,
-          nextTimer: null,
-        };
+        // The database call takes time. The player may have left, or another player may
+        // have created this live room while we were waiting, so check again before using it.
+        if (!socket.connected) return;
+        if (!activeRooms[room]) {
+          activeRooms[room] = {
+            players: [],
+            currentQuestionIndex: 0,
+            questions: quiz.questions,
+            status: "waiting",
+            timer: null,
+            nextTimer: null,
+          };
+        }
       }
 
       socket.join(room);

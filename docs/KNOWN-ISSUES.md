@@ -23,6 +23,10 @@ Also fixed while testing:
 - Room IDs with spaces (for example `12 `) did not match `12`.
 - "Create Another" went back to the menu instead of an empty create form.
 
+## Fixed in version 3
+
+- **Quizzes lost on every restart.** Quizzes are saved in MongoDB (`models/quiz.model.js`). A unique index on `roomId` rejects duplicate room IDs, and a TTL index deletes a quiz 90 days after it was created.
+
 ## Still open (on purpose)
 
 2. **Server trusts the client in Tic-Tac-Toe** (`ticTacToe.socket.js`, move relay). No turn, empty-cell or winner check on the server. Fix idea: keep the board and turn on the server, validate each move, send the result.
@@ -31,4 +35,4 @@ Also fixed while testing:
 13. **Score leak** (`quiz.socket.js`, `scoresUpdate`). Scores update when someone answers, so others can tell who was correct before the reveal.
 14. (rest) The Exit button is on every play screen of Quiz Clash, and `eslint` may report `react-hooks/exhaustive-deps` warnings.
 
-Other limits: all state is in server memory (lost on restart, one server only), no reconnection, no authentication.
+Other limits: the **live game state** is in server memory (a game in progress is lost on restart, one server only), no reconnection, no authentication. Saved quizzes are in MongoDB since version 3, so they are no longer lost on restart.

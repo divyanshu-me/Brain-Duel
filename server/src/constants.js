@@ -21,4 +21,8 @@ export const QUIZ_MAX_ANSWERS = 6;
 export const QUIZ_MAX_ANSWER_LENGTH = 150;
 export const TTT_MAX_MESSAGE_LENGTH = 500; // chat message
 
+// MongoDB (quizzes are saved here so they survive a server restart)
+export const DB_NAME = "brain-duel";
+export const QUIZ_EXPIRE_DAYS = 90; // a saved quiz is deleted automatically after this many days
+
 export const DEFAULT_CLIENT_ORIGIN = "http://localhost:5173";

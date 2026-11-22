@@ -1,5 +1,17 @@
 # Changelog
 
+## Version 3 (quizzes saved in MongoDB)
+
+**What changed:** a quiz is now saved in MongoDB, so it survives a server restart. The live game (players, scores, timers) is still in memory.
+
+- New: `server/src/db/index.js` (`connectDB`), `server/src/models/quiz.model.js` (`Quiz` schema), `DB_NAME` and `QUIZ_EXPIRE_DAYS` in `constants.js`.
+- `index.js`: connects to MongoDB first, then starts listening. If `MONGODB_URI` is missing or is still the placeholder, the server prints a clear message and stops.
+- `quiz.socket.js`: `createQuiz` saves with `Quiz.create`. A duplicate room ID is rejected by the unique index on `roomId`. `joinRoom` loads the quiz with `Quiz.findOne` when there is no live room. Both handlers are `async` and handle database errors without crashing.
+- `joinRoom` checks again after the database call that the player is still connected and that another player has not already created the live room (two players joining at the same moment).
+- Only new dependency: `mongoose`. No new client code, no new events, no new routes. The events and their names are the same as version 2.
+- `MONGODB_URI` added to `server/.env`, `server/.env.example` and `render.yaml`. README has a "MongoDB setup" section.
+- Saved quizzes are deleted automatically 90 days after creation (TTL index). Change `QUIZ_EXPIRE_DAYS` or delete that one line in the model to change this.
+
 ## Version 2 (after your first test)
 
 You reported four things. All four are fixed.
