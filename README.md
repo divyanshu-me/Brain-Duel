@@ -64,10 +64,6 @@ These are implementation details of the current version, not claims about featur
 Brain-Duel-App/
 ├── package.json                 # Root scripts for setup, development, start, and build
 ├── render.yaml                  # Render deployment blueprint
-├── docs/
-│   ├── CODE-MAP.md              # Guide to the project files
-│   ├── CHANGELOG.md             # Version 2 changes
-│   └── KNOWN-ISSUES.md          # Fixed and outstanding issues
 ├── server/
 │   ├── .env                     # Local server environment variables (create this file)
 │   └── src/
