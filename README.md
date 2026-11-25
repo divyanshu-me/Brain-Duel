@@ -306,14 +306,6 @@ The application uses separate namespaces for each game.
 | Client → server | `createQuiz { roomId, quizName, questions }`, `joinRoom (room, name)`, `submitAnswer (room, index)`, `leaveRoom (room, name)` |
 | Server → client | `quizCreated`, `quizCreationError`, `quizNotFound`, `message`, `newQuestion`, `scoresUpdate`, `reveal`, `gameOver` |
 
-## Known issues and further details
-
-For more information about the implementation and outstanding issues, see:
-
-- [`docs/CODE-MAP.md`](docs/CODE-MAP.md) — codebase navigation guide.
-- [`docs/CHANGELOG.md`](docs/CHANGELOG.md) — version 2 changes.
-- [`docs/KNOWN-ISSUES.md`](docs/KNOWN-ISSUES.md) — issues fixed and known limitations.
-
 ## License
 
 No license information is specified in this repository. Add a `LICENSE` file before presenting the project as open source for reuse.
